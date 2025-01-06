@@ -8,49 +8,22 @@ A Google Cloud Function proxy that enables access to Google's Gemini API from re
 
 - 🌏 Google's Gemini API is not directly accessible in certain regions (e.g., Hong Kong, Macau)
 - 🔄 Developers in these regions can't directly integrate Gemini into their applications
-- 💰 Need for a cost-effective alternative to OpenAI's GPT models
 - 🛠️ Desire to use existing OpenAI-compatible tooling with Gemini
 
-### Why This Solution is Better
+### Why This Solution
 
 #### Current Solutions
 
-Most existing solutions (like [openai-gemini](https://github.com/PublicAffairs/openai-gemini)) transform OpenAI API requests into Gemini format through complex request/response mapping, which can lead to:
-
-- 🔧 Maintenance overhead as APIs evolve
-- ⚠️ Potential compatibility issues
-- 🐌 Additional processing overhead
-- ❌ Limited feature support
+Most of the existing solutions (like [openai-gemini](https://github.com/PublicAffairs/openai-gemini)) transform Gemini API requests into OpenAI format and deploy them on Cloudflare Workers, which do not allow specifying the worker region. As a result, these solutions are not suitable for scenarios requiring region-specific deployment.
 
 #### Our Approach
 
-This proxy leverages Gemini's official OpenAI compatibility (released on 2024-11-26) which means:
+This proxy leverages Gemini's official OpenAI compatibility (released on 2024-11) which means:
 
 - ✅ Direct use of Gemini's native OpenAI endpoint
 - 🔍 No request/response transformation needed
 - ⚡ Better performance and reliability
-- 💯 Full feature compatibility
 - 🔄 Future-proof as Gemini maintains the compatibility layer
-
-### Solution
-
-This proxy:
-
-- 🌍 Deploys to Google Cloud Functions, which has better global accessibility
-- 🔌 Acts as a bridge between restricted regions and Gemini API
-- 💻 Uses Gemini's native OpenAI compatibility for maximum reliability
-- 🚀 Enables developers in restricted regions to build AI applications with Gemini
-
-## ✨ Features
-
-- 🔄 Seamless proxy using Gemini's native OpenAI compatibility
-- 🌊 Supports both streaming and non-streaming responses
-- 🔒 Proper CORS and error handling
-- 📝 Detailed logging for easy debugging
-- ⚡ Native OpenAI format support (no transformation needed)
-- 🌐 Works from regions where Gemini API is restricted
-- 💳 Use Gemini's competitive pricing while maintaining OpenAI compatibility
-- 🔧 Easy deployment to Google Cloud Functions
 
 ## 🚀 Quick Start
 
@@ -66,7 +39,7 @@ This proxy:
 1. Clone this repository:
 
    ```bash
-   git clone https://github.com/yourusername/gemini-native-openai-proxy.git
+   git clone https://github.com/askiichan/gemini-native-openai-proxy.git
    cd gemini-native-openai-proxy
    ```
 
@@ -102,62 +75,40 @@ The function will be available at `http://localhost:8080`
    gcloud functions deploy proxyGemini \
      --runtime nodejs18 \
      --trigger-http \
+     --region asia-east1  # Deploy to Taiwan data center for optimal APAC performance
      --allow-unauthenticated
    ```
 
+> Note: The `asia-east1` region (Taiwan) is chosen for optimal latency in Hong Kong, Macau, and nearby regions while ensuring full access to Gemini API services. This region provides a good balance between performance and service availability for APAC users.
+
 After deployment, you'll receive a URL for your function. Save this URL as it will be your proxy endpoint.
 
-## 📝 Usage
+### Testing the Deployment
 
-### Using with OpenAI Client Libraries
+After deploying to Google Cloud Functions, you can test your endpoint using curl. Here's an example command for Windows:
 
-#### Python
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    api_key="YOUR_GEMINI_API_KEY",
-    base_url="YOUR_CLOUD_FUNCTION_URL"
-)
-
-response = client.chat.completions.create(
-    model="gemini-1.5-flash",
-    messages=[
-        {"role": "user", "content": "Hello!"}
-    ]
-)
+```bash
+curl -X POST "https://REGION-PROJECT_ID.cloudfunctions.net/proxyGemini/v1beta/openai/chat/completions" ^
+-H "Content-Type: application/json" ^
+-H "Authorization: Bearer YOUR_API_KEY" ^
+-d "{\"model\": \"gemini-1.5-flash\", \"messages\": [{\"role\": \"user\", \"content\": \"Explain to me how AI works\"}]}"
 ```
 
-#### JavaScript/Node.js
+For Linux/Mac users, replace `^` with `\`:
 
-```javascript
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: "YOUR_GEMINI_API_KEY",
-  baseURL: "YOUR_CLOUD_FUNCTION_URL",
-});
-
-const response = await openai.chat.completions.create({
-  model: "gemini-1.5-flash",
-  messages: [{ role: "user", content: "Hello!" }],
-});
+```bash
+curl -X POST "https://REGION-PROJECT_ID.cloudfunctions.net/proxyGemini/v1beta/openai/chat/completions" \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer YOUR_API_KEY" \
+-d '{"model": "gemini-1.5-flash", "messages": [{"role": "user", "content": "Explain to me how AI works"}]}'
 ```
 
-### Supported Endpoints
+> **Important**: Replace `YOUR_API_KEY` with your actual Google Cloud API key and `REGION-PROJECT_ID` with your function's region and project ID. Never commit or share your API key publicly.
+
+## Supported Endpoints
 
 - `/chat/completions` - For chat completions
 - Streaming support via `stream: true` parameter
-
-## ⚙️ Configuration
-
-The proxy automatically handles:
-
-- CORS headers for browser access
-- Error handling and logging
-- Request/response transformation
-- Streaming responses
 
 ## 🔒 Security Considerations
 
@@ -176,21 +127,9 @@ The proxy automatically handles:
 - [Gemini API Documentation](https://cloud.google.com/vertex-ai/docs/generative-ai/model-reference/gemini)
 - [OpenAI API Reference](https://platform.openai.com/docs/api-reference)
 - [Google Cloud Functions Documentation](https://cloud.google.com/functions/docs)
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+- [Google Cloud Regions](https://cloud.google.com/compute/docs/regions-zones)
+- [Google Cloud Functions Locations](https://cloud.google.com/functions/docs/locations)
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **500 Error**: Check your Gemini API key and request format
-2. **CORS Issues**: Verify the CORS headers match your client's needs
-3. **Streaming Issues**: Ensure your client supports SSE (Server-Sent Events)
-
-For more detailed logs, check the Google Cloud Functions logs in your Google Cloud Console.
